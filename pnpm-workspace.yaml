@@ -1,0 +1,3 @@
+onlyBuiltDependencies:
+  - oracledb
+  - sharp
