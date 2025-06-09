@@ -9,7 +9,8 @@ INSERT INTO customers (customer_id, company_name, company_type, region, reg_date
 (1007, '한국GM', '완성차', '인천', '2024-01-30', '자동차 제조', '대한민국', '대기업'),
 (1008, '카닥', '정비소', '서울', '2024-03-20', '자동차 정비', '대한민국', '중소기업'),
 (1009, '하나로카', '유통', '대구', '2024-02-28', '자동차 유통', '대한민국', '중견기업'),
-(1010, '그린카', '렌터카', '서울', '2024-04-12', '카셰어링', '대한민국', '중견기업');
+(1010, '그린카', '렌터카', '서울', '2024-04-12', '카셰어링', '대한민국', '중견기업')
+ON CONFLICT (customer_id) DO NOTHING;
 
 -- Contacts 데이터 삽입
 INSERT INTO contacts (customer_id, name, email, position, department, phone, contact_date) VALUES
@@ -22,7 +23,8 @@ INSERT INTO contacts (customer_id, name, email, position, department, phone, con
 (1007, '임동혁', 'lim@company.com', '사원', '영업부', '010-7890-1234', '2025-06-01'),
 (1008, '송미라', 'song@company.com', '팀장', '고객서비스부', '010-8901-2345', '2025-05-09'),
 (1009, '강태호', 'kang@company.com', '선임', '개발부', '010-9012-3456', '2025-05-21'),
-(1010, '윤서연', 'yoon@company.com', '주임', '마케팅부', '010-0123-4567', '2025-06-03');
+(1010, '윤서연', 'yoon@company.com', '주임', '마케팅부', '010-0123-4567', '2025-06-03')
+ON CONFLICT (customer_id, email) DO NOTHING;
 
 -- Orders 데이터 삽입
 INSERT INTO orders (order_id, contact_id, product_id, order_date, quantity, amount, cost, margin_rate, payment_status, delivery_status) VALUES
@@ -35,7 +37,8 @@ INSERT INTO orders (order_id, contact_id, product_id, order_date, quantity, amou
 (2007, 1007, 'PRD-007', '2025-05-15', 6, 300000.0, 240000.0, 0.2, '결제완료', '배송완료'),
 (2008, 1008, 'PRD-008', '2025-05-20', 8, 400000.0, 320000.0, 0.2, '결제완료', '미배송'),
 (2009, 1009, 'PRD-009', '2025-05-25', 1, 50000.0, 40000.0, 0.2, '미결제', '미배송'),
-(2010, 1010, 'PRD-010', '2025-06-01', 12, 600000.0, 480000.0, 0.2, '결제완료', '배송완료');
+(2010, 1010, 'PRD-010', '2025-06-01', 12, 600000.0, 480000.0, 0.2, '결제완료', '배송완료')
+ON CONFLICT (order_id) DO NOTHING;
 
 -- OrdersX 데이터 삽입 (확장된 주문 데이터)
 INSERT INTO ordersx (order_id, contact_id, product_id, order_date, quantity, amount, cost, margin_rate, payment_status, delivery_status, costt, revenue) VALUES
@@ -48,7 +51,8 @@ INSERT INTO ordersx (order_id, contact_id, product_id, order_date, quantity, amo
 (3007, 1007, 'PRD-007', '2025-05-15', 6, 300000.0, 240000.0, 0.2, '결제완료', '배송완료', 220000.0, 320000.0),
 (3008, 1008, 'PRD-008', '2025-05-20', 8, 400000.0, 320000.0, 0.2, '결제완료', '미배송', 300000.0, 420000.0),
 (3009, 1009, 'PRD-009', '2025-05-25', 1, 50000.0, 40000.0, 0.2, '미결제', '미배송', 38000.0, 52000.0),
-(3010, 1010, 'PRD-010', '2025-06-01', 12, 600000.0, 480000.0, 0.2, '결제완료', '배송완료', 450000.0, 630000.0);
+(3010, 1010, 'PRD-010', '2025-06-01', 12, 600000.0, 480000.0, 0.2, '결제완료', '배송완료', 450000.0, 630000.0)
+ON CONFLICT (order_id) DO NOTHING;
 
 -- Issues 데이터 삽입
 INSERT INTO issues (issue_id, order_id, issue_date, issue_type, severity, description, resolved_date, status) VALUES
@@ -59,7 +63,8 @@ INSERT INTO issues (issue_id, order_id, issue_date, issue_type, severity, descri
 (3005, 2005, '2025-05-10', '배송 주소 변경', 'Medium', '고객이 배송 주소 변경을 요청했습니다.', '2025-05-11', '해결됨'),
 (3006, 2006, '2025-05-15', '환불 요청', 'High', '고객이 제품 환불을 요청했습니다.', NULL, '처리중'),
 (3007, 2007, '2025-05-20', '포장 문제', 'Low', '제품 포장이 손상된 상태로 배송되었습니다.', '2025-05-21', '해결됨'),
-(3008, 2008, '2025-05-25', '수량 오류', 'Medium', '주문한 수량과 다른 수량이 배송되었습니다.', NULL, '처리중');
+(3008, 2008, '2025-05-25', '수량 오류', 'Medium', '주문한 수량과 다른 수량이 배송되었습니다.', NULL, '처리중')
+ON CONFLICT (issue_id) DO NOTHING;
 
 -- Customer Order Forecast 데이터 삽입
 INSERT INTO customer_order_forecast (cof_id, customer_id, predicted_date, predicted_quantity, mape, prediction_model, forecast_generation_datetime) VALUES
@@ -74,4 +79,11 @@ INSERT INTO customer_order_forecast (cof_id, customer_id, predicted_date, predic
 (9, 1002, '2025-07-01', 145, 0.092, 'LSTM', '2025-04-01 10:00:00'),
 (10, 1002, '2025-08-01', 160, 0.092, 'LSTM', '2025-04-01 10:00:00'),
 (11, 1002, '2025-09-01', 175, 0.092, 'LSTM', '2025-04-01 10:00:00'),
-(12, 1002, '2025-10-01', 190, 0.092, 'LSTM', '2025-04-01 10:00:00');
+(12, 1002, '2025-10-01', 190, 0.092, 'LSTM', '2025-04-01 10:00:00')
+ON CONFLICT (cof_id) DO NOTHING;
+
+-- 관리자 및 테스트 사용자 정보 추가
+INSERT INTO users (user_id, name, email, role) VALUES
+('admin', '관리자', 'admin@company.com', 'admin'),
+('user1', '김철수', 'kim@company.com', 'staff')
+ON CONFLICT (email) DO NOTHING;

@@ -23,13 +23,44 @@ export async function POST(request: NextRequest) {
       // 사용자 정보 조회
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("user_id, name, email")
+        .select("user_id, name, email, role")
         .eq("email", email)
         .single()
 
       if (userError) {
         console.error("사용자 정보 조회 오류:", userError)
-        return NextResponse.json({ success: false, message: "사용자 정보를 찾을 수 없습니다." }, { status: 404 })
+        // 사용자 정보가 없는 경우 기본 정보로 생성
+        const defaultUserData = {
+          user_id: authData.user.id,
+          name: email.split("@")[0],
+          email: email,
+          role: "staff",
+        }
+
+        // users 테이블에 기본 사용자 정보 저장
+        const { error: insertError } = await supabase.from("users").insert(defaultUserData)
+
+        if (insertError) {
+          console.error("기본 사용자 정보 생성 오류:", insertError)
+        }
+
+        // 세션 쿠키 설정
+        const cookieStore = await cookies()
+        const userSession = {
+          USER_ID: defaultUserData.user_id,
+          NAME: defaultUserData.name,
+          EMAIL: defaultUserData.email,
+          ROLE: defaultUserData.role,
+        }
+
+        cookieStore.set("user-session", JSON.stringify(userSession), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7일
+        })
+
+        return NextResponse.json({ success: true, user: userSession })
       }
 
       // 세션 쿠키 설정
@@ -38,6 +69,7 @@ export async function POST(request: NextRequest) {
         USER_ID: userData.user_id,
         NAME: userData.name,
         EMAIL: userData.email,
+        ROLE: userData.role,
       }
 
       cookieStore.set("user-session", JSON.stringify(userSession), {
