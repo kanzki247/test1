@@ -6,7 +6,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 export async function GET() {
   try {
     const { data, error } = await supabase
-      .from("orders")
+      .from("ordersx")
       .select(`
         order_id,
         contact_id,
@@ -17,7 +17,9 @@ export async function GET() {
         cost,
         margin_rate,
         payment_status,
-        delivery_status
+        delivery_status,
+        costt,
+        revenue
       `)
       .order("order_date", { ascending: false })
 
@@ -37,6 +39,8 @@ export async function GET() {
       MARGIN_RATE: order.margin_rate,
       PAYMENT_STATUS: order.payment_status,
       DELIVERY_STATUS: order.delivery_status,
+      COSTT: order.costt,
+      REVENUE: order.revenue,
     }))
 
     return NextResponse.json(processedData, {

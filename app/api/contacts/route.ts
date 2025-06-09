@@ -1,31 +1,42 @@
-import { NextResponse } from "next/server" // Next.js의 응답 객체 불러오기
-import oracledb from "oracledb"
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function GET() {
-  // GET 요청 처리 함수 정의
   try {
- 
-    // oracledb.initOracleClient?.({ configDir: undefined })
-    
-    const conn = await oracledb.getConnection({
-      user: process.env.ORACLE_USER,
-      password: process.env.ORACLE_PASSWORD,
-      connectString: process.env.ORACLE_CONNECTION_STRING,
-    })
+    const { data, error } = await supabase
+      .from("contacts")
+      .select(`
+        customer_id,
+        name,
+        email,
+        position,
+        department,
+        phone,
+        contact_date
+      `)
+      .order("customer_id")
 
-    const result = await conn.execute(
-      `SELECT customer_id AS ID, name AS NAME, email AS EMAIL, position AS POSITION, 
-              department AS DEPARTMENT, phone AS PHONE, 
-              TRUNC(SYSDATE - contact_date) AS DAYS_SINCE_CONTACT
-       FROM CONTACTS
-       ORDER BY customer_id`,
-      [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    )
-    
-    await conn.close()
-    return NextResponse.json(result.rows)
-    
+    if (error) {
+      console.error("Supabase 오류:", error)
+      return NextResponse.json({ error: "데이터 조회 실패", details: error.message }, { status: 500 })
+    }
+
+    // 날짜 계산 추가
+    const processedData = data?.map((contact) => ({
+      ID: contact.customer_id,
+      NAME: contact.name,
+      EMAIL: contact.email,
+      POSITION: contact.position,
+      DEPARTMENT: contact.department,
+      PHONE: contact.phone,
+      DAYS_SINCE_CONTACT: contact.contact_date
+        ? Math.floor((new Date().getTime() - new Date(contact.contact_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
+    }))
+
+    return NextResponse.json(processedData)
   } catch (err) {
     console.error("DB 오류:", err)
     return NextResponse.json(

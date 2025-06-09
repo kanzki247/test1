@@ -6,37 +6,31 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 export async function GET() {
   try {
     const { data, error } = await supabase
-      .from("orders")
+      .from("customer_order_forecast")
       .select(`
-        order_id,
-        contact_id,
-        product_id,
-        order_date,
-        quantity,
-        amount,
-        cost,
-        margin_rate,
-        payment_status,
-        delivery_status
+        cof_id,
+        customer_id,
+        predicted_date,
+        predicted_quantity,
+        mape,
+        prediction_model,
+        forecast_generation_datetime
       `)
-      .order("order_date", { ascending: false })
+      .order("predicted_date")
 
     if (error) {
       console.error("Supabase 오류:", error)
       return NextResponse.json({ error: "데이터 조회 실패", details: error.message }, { status: 500 })
     }
 
-    const processedData = data?.map((order) => ({
-      ORDER_ID: order.order_id,
-      CONTACT_ID: order.contact_id,
-      PRODUCT_ID: order.product_id,
-      ORDER_DATE: order.order_date,
-      QUANTITY: order.quantity,
-      AMOUNT: order.amount,
-      COST: order.cost,
-      MARGIN_RATE: order.margin_rate,
-      PAYMENT_STATUS: order.payment_status,
-      DELIVERY_STATUS: order.delivery_status,
+    const processedData = data?.map((forecast) => ({
+      COF_ID: forecast.cof_id,
+      CUSTOMER_ID: forecast.customer_id,
+      PREDICTED_DATE: forecast.predicted_date,
+      PREDICTED_QUANTITY: forecast.predicted_quantity,
+      MAPE: forecast.mape,
+      PREDICTION_MODEL: forecast.prediction_model,
+      FORECAST_GENERATION_DATETIME: forecast.forecast_generation_datetime,
     }))
 
     return NextResponse.json(processedData, {
