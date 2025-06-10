@@ -1,92 +1,84 @@
--- Users 테이블 생성
+-- 사용자 테이블 생성
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(100) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    role VARCHAR(50) DEFAULT 'staff',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+  id SERIAL PRIMARY KEY,
+  user_id TEXT UNIQUE NOT NULL,
+  name TEXT,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Customers 테이블 생성
-CREATE TABLE IF NOT EXISTS customers (
-    customer_id SERIAL PRIMARY KEY,
-    company_name VARCHAR(255) NOT NULL,
-    company_type VARCHAR(100),
-    region VARCHAR(100),
-    reg_date DATE,
-    industry_type VARCHAR(100),
-    country VARCHAR(100),
-    company_size VARCHAR(50),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- 저장 프로시저 생성 (테이블 자동 생성용)
+CREATE OR REPLACE FUNCTION create_users_table_if_not_exists()
+RETURNS void AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT FROM pg_tables 
+    WHERE schemaname = 'public' AND tablename = 'users'
+  ) THEN
+    CREATE TABLE users (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT UNIQUE NOT NULL,
+      name TEXT,
+      email TEXT UNIQUE NOT NULL,
+      role TEXT DEFAULT 'user',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
 
--- Contacts 테이블 생성
+-- 기타 필요한 테이블들 생성
 CREATE TABLE IF NOT EXISTS contacts (
-    id SERIAL PRIMARY KEY,
-    customer_id INTEGER REFERENCES customers(customer_id),
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255),
-    position VARCHAR(100),
-    department VARCHAR(100),
-    phone VARCHAR(50),
-    contact_date DATE DEFAULT CURRENT_DATE,
-    created_at TIMESTAMP DEFAULT NOW()
+  contact_id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  company TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Orders 테이블 생성
-CREATE TABLE IF NOT EXISTS orders (
-    order_id SERIAL PRIMARY KEY,
-    contact_id INTEGER REFERENCES contacts(customer_id),
-    product_id VARCHAR(100),
-    order_date DATE DEFAULT CURRENT_DATE,
-    quantity INTEGER,
-    amount DECIMAL(15,2),
-    cost DECIMAL(15,2),
-    margin_rate DECIMAL(5,4),
-    payment_status VARCHAR(50),
-    delivery_status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS customers (
+  customer_id SERIAL PRIMARY KEY,
+  company_name TEXT NOT NULL,
+  company_type TEXT,
+  contact_id INTEGER REFERENCES contacts(contact_id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- OrdersX 테이블 생성 (확장된 주문 테이블)
 CREATE TABLE IF NOT EXISTS ordersx (
-    order_id SERIAL PRIMARY KEY,
-    contact_id INTEGER REFERENCES contacts(customer_id),
-    product_id VARCHAR(100),
-    order_date DATE DEFAULT CURRENT_DATE,
-    quantity INTEGER,
-    amount DECIMAL(15,2),
-    cost DECIMAL(15,2),
-    margin_rate DECIMAL(5,4),
-    payment_status VARCHAR(50),
-    delivery_status VARCHAR(50),
-    costt DECIMAL(15,2),
-    revenue DECIMAL(15,2),
-    created_at TIMESTAMP DEFAULT NOW()
+  order_id SERIAL PRIMARY KEY,
+  contact_id INTEGER REFERENCES contacts(contact_id),
+  product_id INTEGER,
+  order_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  quantity INTEGER,
+  amount NUMERIC(10, 2),
+  cost NUMERIC(10, 2),
+  margin_rate NUMERIC(5, 2),
+  payment_status TEXT,
+  delivery_status TEXT,
+  costt NUMERIC(10, 2),
+  revenue NUMERIC(10, 2)
 );
 
--- Issues 테이블 생성
-CREATE TABLE IF NOT EXISTS issues (
-    issue_id SERIAL PRIMARY KEY,
-    order_id INTEGER REFERENCES orders(order_id),
-    issue_date DATE DEFAULT CURRENT_DATE,
-    issue_type VARCHAR(100),
-    severity VARCHAR(50),
-    description TEXT,
-    resolved_date DATE,
-    status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Customer Order Forecast 테이블 생성
 CREATE TABLE IF NOT EXISTS customer_order_forecast (
-    cof_id SERIAL PRIMARY KEY,
-    customer_id INTEGER REFERENCES customers(customer_id),
-    predicted_date DATE,
-    predicted_quantity INTEGER,
-    mape DECIMAL(10,6),
-    prediction_model VARCHAR(100),
-    forecast_generation_datetime TIMESTAMP DEFAULT NOW()
+  cof_id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customers(customer_id),
+  predicted_date DATE,
+  predicted_quantity INTEGER,
+  mape NUMERIC(10, 2),
+  prediction_model TEXT,
+  forecast_generation_datetime TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS issues (
+  issue_id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'open',
+  priority TEXT DEFAULT 'medium',
+  assigned_to TEXT,
+  created_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

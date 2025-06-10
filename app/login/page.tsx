@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import AnimatedBackground from "@/components/animated-background"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
   // 기본값으로 데모 계정 정보 설정
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
+  const [adminCreated, setAdminCreated] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
 
@@ -46,18 +48,23 @@ export default function LoginPage() {
   const handleCreateAdmin = async () => {
     setIsCreatingAdmin(true)
     setError("")
+    setAdminCreated(false)
 
     try {
       const response = await fetch("/api/auth/create-admin", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       })
 
       const data = await response.json()
 
       if (data.success) {
+        setAdminCreated(true)
         setError("")
-        alert("관리자 계정이 생성되었습니다. 이제 로그인할 수 있습니다.")
       } else {
+        console.error("관리자 계정 생성 실패:", data)
         setError(data.message || "관리자 계정 생성에 실패했습니다.")
       }
     } catch (error) {
@@ -77,6 +84,14 @@ export default function LoginPage() {
           <CardDescription>Enter your email below to login to your account</CardDescription>
         </CardHeader>
         <CardContent>
+          {adminCreated && (
+            <Alert className="mb-4 bg-green-50 border-green-200">
+              <AlertDescription className="text-green-700">
+                관리자 계정이 성공적으로 생성되었습니다. 이제 로그인할 수 있습니다.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
