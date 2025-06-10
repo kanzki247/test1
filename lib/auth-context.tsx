@@ -6,6 +6,7 @@ interface User {
   USER_ID: string
   NAME: string
   EMAIL: string
+  ROLE?: string
 }
 
 interface AuthContextType {
@@ -29,9 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/session")
 
-      // 응답 상태 코드 확인
+      // 401은 정상적인 "로그인되지 않음" 상태이므로 에러로 처리하지 않음
+      if (response.status === 401) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
+      // 다른 에러 상태 코드 확인
       if (!response.ok) {
         console.error(`세션 확인 실패: ${response.status} ${response.statusText}`)
+        setUser(null)
         setLoading(false)
         return
       }
@@ -40,17 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const contentType = response.headers.get("content-type")
       if (!contentType || !contentType.includes("application/json")) {
         console.error("세션 API가 JSON이 아닌 응답을 반환했습니다:", contentType)
+        setUser(null)
         setLoading(false)
         return
       }
 
       const data = await response.json()
 
-      if (data.success) {
+      if (data.success && data.user) {
         setUser(data.user)
+      } else {
+        setUser(null)
       }
     } catch (error) {
       console.error("세션 확인 오류:", error)
+      setUser(null)
     } finally {
       setLoading(false)
     }
@@ -88,9 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
       } else {
         console.error("로그아웃 실패:", response.statusText)
+        // 로그아웃 실패해도 클라이언트 상태는 초기화
+        setUser(null)
       }
     } catch (error) {
       console.error("로그아웃 오류:", error)
+      // 에러가 발생해도 클라이언트 상태는 초기화
+      setUser(null)
     }
   }
 
