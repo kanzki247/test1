@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("admin123")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
 
@@ -39,6 +40,31 @@ export default function LoginPage() {
       setError("로그인 처리 중 오류가 발생했습니다.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCreateAdmin = async () => {
+    setIsCreatingAdmin(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/auth/create-admin", {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setError("")
+        alert("관리자 계정이 생성되었습니다. 이제 로그인할 수 있습니다.")
+      } else {
+        setError(data.message || "관리자 계정 생성에 실패했습니다.")
+      }
+    } catch (error) {
+      console.error("관리자 계정 생성 오류:", error)
+      setError("관리자 계정 생성 중 오류가 발생했습니다.")
+    } finally {
+      setIsCreatingAdmin(false)
     }
   }
 
@@ -88,8 +114,8 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" onClick={handleSubmit} disabled={loading}>
             {loading ? "로그인 중..." : "Login"}
           </Button>
-          <Button variant="outline" className="w-full">
-            Login with Google
+          <Button variant="outline" className="w-full" onClick={handleCreateAdmin} disabled={isCreatingAdmin}>
+            {isCreatingAdmin ? "계정 생성 중..." : "Create Admin Account"}
           </Button>
           <div className="text-xs text-muted-foreground text-center mt-2">
             <strong>Demo:</strong> admin@company.com / admin123
