@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
     const sessionCookie = cookieStore.get("user-session")
 
     if (sessionCookie) {
@@ -12,8 +12,7 @@ export async function GET() {
         return NextResponse.json({ success: true, user })
       } catch (parseError) {
         console.error("세션 쿠키 파싱 오류:", parseError)
-        // 쿠키가 손상된 경우 쿠키 삭제
-        cookieStore.delete("user-session")
+        // 쿠키가 손상된 경우 응답만 반환 (쿠키 삭제는 클라이언트에서 처리)
         return NextResponse.json({ success: false, message: "세션 쿠키가 손상되었습니다." }, { status: 401 })
       }
     } else {

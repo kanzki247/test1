@@ -1,126 +1,134 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // 관리자 계정인 경우 자동 생성 시도
-    if (email === "admin@company.com" && password === "admin123") {
-      // 먼저 관리자 계정이 존재하는지 확인
-      const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email)
-
-      if (!existingUser.user) {
-        console.log("관리자 계정이 없어서 자동 생성합니다...")
-        // 관리자 계정 자동 생성
-        const createResponse = await fetch(`${request.nextUrl.origin}/api/auth/create-admin`, {
-          method: "POST",
-        })
-
-        if (!createResponse.ok) {
-          console.error("관리자 계정 자동 생성 실패")
-        } else {
-          console.log("관리자 계정 자동 생성 완료")
-        }
-      }
-    }
-
-    // Supabase Auth를 사용한 로그인
+    // Supabase Auth로 로그인 시도
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (authError) {
-      console.error("Supabase 로그인 오류:", authError)
+      console.error("Supabase 로그인 오류:", authError.message)
 
-      // 관리자 계정인 경우 한 번 더 생성 시도
+      // 관리자 계정인 경우 자동 생성 시도
       if (email === "admin@company.com" && password === "admin123") {
-        console.log("관리자 계정 로그인 실패, 재생성 시도...")
-        const createResponse = await fetch(`${request.nextUrl.origin}/api/auth/create-admin`, {
-          method: "POST",
-        })
+        try {
+          // 관리자 계정 생성
+          const { data: createData, error: createError } = await supabase.auth.admin.createUser({
+            email: "admin@company.com",
+            password: "admin123",
+            email_confirm: true,
+            user_metadata: {
+              name: "Administrator",
+              role: "admin",
+            },
+          })
 
-        if (createResponse.ok) {
-          // 재생성 후 다시 로그인 시도
+          if (createError) {
+            console.error("관리자 계정 생성 오류:", createError)
+            return NextResponse.json({ success: false, message: "관리자 계정 생성에 실패했습니다." }, { status: 400 })
+          }
+
+          // 생성 후 다시 로그인 시도
           const { data: retryAuthData, error: retryAuthError } = await supabase.auth.signInWithPassword({
             email,
             password,
           })
 
-          if (!retryAuthError && retryAuthData.user) {
-            return await handleSuccessfulLogin(retryAuthData.user, email)
+          if (retryAuthError) {
+            console.error("재시도 로그인 오류:", retryAuthError)
+            return NextResponse.json({ success: false, message: "로그인에 실패했습니다." }, { status: 400 })
           }
+
+          return await handleSuccessfulLogin(retryAuthData.user, email)
+        } catch (createErr) {
+          console.error("계정 생성 중 오류:", createErr)
+          return NextResponse.json({ success: false, message: "계정 생성 중 오류가 발생했습니다." }, { status: 500 })
         }
       }
 
-      return NextResponse.json({ success: false, message: "이메일 또는 비밀번호가 잘못되었습니다." }, { status: 401 })
+      return NextResponse.json(
+        { success: false, message: "이메일 또는 비밀번호가 올바르지 않습니다." },
+        { status: 400 },
+      )
     }
 
-    if (authData.user) {
-      return await handleSuccessfulLogin(authData.user, email)
-    }
-
-    return NextResponse.json({ success: false, message: "로그인에 실패했습니다." }, { status: 401 })
+    return await handleSuccessfulLogin(authData.user, email)
   } catch (error) {
-    console.error("로그인 오류:", error)
-    return NextResponse.json({ success: false, message: "서버 오류가 발생했습니다." }, { status: 500 })
+    console.error("로그인 처리 오류:", error)
+    return NextResponse.json({ success: false, message: "로그인 처리 중 오류가 발생했습니다." }, { status: 500 })
   }
 }
 
 async function handleSuccessfulLogin(user: any, email: string) {
-  // 사용자 정보 조회
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("user_id, name, email, role")
-    .eq("email", email)
-    .single()
+  try {
+    // users 테이블에서 사용자 정보 조회
+    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("email", email).single()
 
-  let userSession
+    let finalUserData = userData
 
-  if (userError || !userData) {
-    console.log("사용자 정보가 없어서 기본 정보로 생성합니다...")
-    // 사용자 정보가 없는 경우 기본 정보로 생성
-    const defaultUserData = {
-      user_id: user.id,
-      name: email === "admin@company.com" ? "관리자" : email.split("@")[0],
-      email: email,
-      role: email === "admin@company.com" ? "admin" : "staff",
+    // 사용자 정보가 없으면 생성
+    if (userError || !userData) {
+      const newUser = {
+        user_id: user.id,
+        name: user.user_metadata?.name || email.split("@")[0],
+        email: email,
+        role: email === "admin@company.com" ? "admin" : "staff",
+        created_at: new Date().toISOString(),
+      }
+
+      const { data: insertedUser, error: insertError } = await supabase.from("users").insert(newUser).select().single()
+
+      if (insertError) {
+        console.error("사용자 정보 생성 오류:", insertError)
+        // 사용자 정보 생성에 실패해도 로그인은 허용
+        finalUserData = {
+          user_id: user.id,
+          name: user.user_metadata?.name || email.split("@")[0],
+          email: email,
+          role: email === "admin@company.com" ? "admin" : "staff",
+        }
+      } else {
+        finalUserData = insertedUser
+      }
     }
 
-    // users 테이블에 기본 사용자 정보 저장
-    const { error: insertError } = await supabase.from("users").upsert(defaultUserData)
-
-    if (insertError) {
-      console.error("기본 사용자 정보 생성 오류:", insertError)
+    // 세션 쿠키 설정
+    const sessionData = {
+      USER_ID: finalUserData.user_id,
+      NAME: finalUserData.name,
+      EMAIL: finalUserData.email,
+      ROLE: finalUserData.role,
     }
 
-    userSession = {
-      USER_ID: defaultUserData.user_id,
-      NAME: defaultUserData.name,
-      EMAIL: defaultUserData.email,
-      ROLE: defaultUserData.role,
-    }
-  } else {
-    userSession = {
-      USER_ID: userData.user_id,
-      NAME: userData.name,
-      EMAIL: userData.email,
-      ROLE: userData.role,
-    }
+    const cookieStore = cookies()
+    cookieStore.set("user-session", JSON.stringify(sessionData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7일
+      path: "/",
+    })
+
+    return NextResponse.json({
+      success: true,
+      user: sessionData,
+      message: "로그인 성공",
+    })
+  } catch (error) {
+    console.error("사용자 정보 처리 오류:", error)
+    return NextResponse.json({ success: false, message: "사용자 정보 처리 중 오류가 발생했습니다." }, { status: 500 })
   }
-
-  // 세션 쿠키 설정
-  const cookieStore = await cookies()
-  cookieStore.set("user-session", JSON.stringify(userSession), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7일
-  })
-
-  return NextResponse.json({ success: true, user: userSession })
 }
