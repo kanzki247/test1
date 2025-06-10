@@ -14,7 +14,6 @@ import AnimatedBackground from "@/components/animated-background"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
-  // 기본값으로 데모 계정 정보 설정
   const [email, setEmail] = useState("admin@company.com")
   const [password, setPassword] = useState("admin123")
   const [loading, setLoading] = useState(false)
@@ -121,7 +120,11 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              {error && <div className="text-sm text-red-500 text-center">{error}</div>}
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertDescription className="text-red-700">{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
           </form>
         </CardContent>
@@ -134,6 +137,9 @@ export default function LoginPage() {
           </Button>
           <div className="text-xs text-muted-foreground text-center mt-2">
             <strong>Demo:</strong> admin@company.com / admin123
+          </div>
+          <div className="text-xs text-muted-foreground text-center">
+            먼저 "Create Admin Account" 버튼을 클릭하여 계정을 생성하세요.
           </div>
           <div className="text-sm text-center mt-4">
             Don&apos;t have an account?{" "}
